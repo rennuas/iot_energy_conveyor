@@ -7,13 +7,13 @@
 // ==============================
 // WiFi & MQTT CONFIG
 // ==============================
-const char* ssid       = "Dharma Legenda";
-const char* password   = "Dharma1000*";
+const char* ssid       = "";
+const char* password   = "";
 
-const char* mqttServer = "a42a0cedeea647cb99d5cb2023cbb3f4.s1.eu.hivemq.cloud"; // perbaiki typo sebelumnya "locahost"
+const char* mqttServer = "";
 const uint16_t mqttPort = 8883;
-const char* mqttUser   = "iotenergy";
-const char* mqttPass   = "Pns12345";
+const char* mqttUser   = "";
+const char* mqttPass   = "";
 
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
@@ -46,7 +46,9 @@ Stepper myStepper3(STEPS_PER_REV, STEP3_IN1, STEP3_IN3, STEP3_IN2, STEP3_IN4);
 
 // Variabel Kontrol Motor
 int motorSpeedRPM = 10; // Kecepatan awal 5 RPM
-bool motorIsRunning = false;
+bool motor1IsRunning = false;
+bool motor2IsRunning = false;
+bool motor3IsRunning = false;
 long lastMotorStep = 0;
 const long MOTOR_STEP_INTERVAL = 10; // Interval untuk langkah motor (ms)
 
@@ -74,18 +76,36 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 
   String commandId = doc["commandId"];
-  bool trigger  = doc["cmd"]["trigger"];
+  int setTurnOn = doc["cmd"]["setTurnOn"];
+  int setTurnOff  = doc["cmd"]["setTurnOff"];
 
   bool success = true;
   
   if(strcmp(topic, "iot_energy/trigger/conveyor") == 0){
-    motorIsRunning = true;
-    Serial.println(motorIsRunning);
-
+    if(setTurnOn != 0){
+      switch (setTurnOn)
+      {
+      case 1:
+        motor1IsRunning = true;
+        break;
+      case 2:
+        motor2IsRunning = true;
+        break;
+      case 3:
+        motor3IsRunning = true;
+        break;
+      
+      default:
+        break;
+      }
+      
+    }
   }
 
   if(strcmp(topic, "iot_energy/trigger/conveyor/shutdown") == 0){
-    motorIsRunning = false;
+    motor1IsRunning = false;
+    motor2IsRunning = false;
+    motor3IsRunning = false;
   }
 
   // Publish status
@@ -141,8 +161,6 @@ void ensureMqtt() {
 }
 
 void runMotorLoop() {
-    if (!motorIsRunning) return;
-    
     // Motor Stepper terus berputar satu arah (maju 1 langkah setiap panggilan)
     // Motor akan melangkah maju dengan kecepatan yang telah di-set oleh myStepper.setSpeed()
     // Motor.step(1) akan memindahkan 1 langkah, dan myStepper.run() akan memajukan motor
@@ -152,9 +170,9 @@ void runMotorLoop() {
     if (millis() - lastMotorStep >= MOTOR_STEP_INTERVAL) {
         lastMotorStep = millis();
         // Berputar 1 langkah (putar searah jarum jam)
-        myStepper1.step(1);
-        myStepper2.step(2);
-        myStepper3.step(3); 
+        if (motor1IsRunning) myStepper1.step(1);
+        if (motor2IsRunning) myStepper1.step(2);
+        if (motor3IsRunning) myStepper1.step(3);
     }
 }
 
